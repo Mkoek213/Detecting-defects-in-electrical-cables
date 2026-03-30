@@ -20,10 +20,11 @@ The workflow follows the one-class anomaly philosophy used for MVTec AD:
 Model type: **PaDiM-style per-location Gaussian anomaly model (diagonal covariance)** on deterministic hand-crafted features:
 
 - resized image features at fixed spatial grid (`feature_size`, default 256)
-- normalized RGB + luminance + gradient magnitude + local contrast
+- normalized RGB + histogram-equalized luminance + CLAHE-like local normalization
+- Sobel gradient magnitude + Laplacian response + local contrast + saturation + radial-position prior
 - per-location mean/variance estimated from normal training data
 - anomaly score = per-location Mahalanobis-like z-score (diagonal)
-- binary mask via validation-calibrated threshold + optional small-component filtering
+- binary mask via validation-calibrated threshold + morphology (opening/closing) + component filtering
 
 Inference artifact is lightweight (`model_artifact.npz`) and runtime code only depends on `numpy` and `Pillow`.
 
@@ -57,7 +58,7 @@ From repository root:
 
 ```bash
 ./.venv/bin/python solutions/paper_anomaly_baseline/prepare_data.py
-./.venv/bin/python solutions/paper_anomaly_baseline/train.py
+./.venv/bin/python solutions/paper_anomaly_baseline/train.py --threshold-steps 16 --stage1-top-k 6 --min-area-candidates 0,32,64,128 --open-kernel-candidates 1,3,5 --close-kernel-candidates 1,3
 ./.venv/bin/python solutions/paper_anomaly_baseline/evaluate.py --split test --output-path solutions/paper_anomaly_baseline/artifacts/model/test_eval.json
 ./.venv/bin/python solutions/paper_anomaly_baseline/export_submission.py
 ```
@@ -83,16 +84,19 @@ Deterministic split used (`seed=20260330`):
 
 Selected thresholding:
 
-- score threshold: `6.4383249`
-- min component area (feature grid): `128`
+- score threshold: `20.0107497`
+- opening kernel: `3`
+- closing kernel: `3`
+- min component area (feature grid): `32`
 
 Metrics:
 
-- validation mean IoU: `0.3523`
-- validation balanced per-class mean IoU: `0.1438`
-- test mean IoU: `0.2416`
-- test balanced per-class mean IoU: `0.1094`
-- test mean inference time: `~21.6 ms / image` on local run
+- validation mean IoU: `0.5484`
+- validation balanced per-class mean IoU: `0.1758`
+- test mean IoU: `0.4164`
+- test balanced per-class mean IoU: `0.1559`
+- full local evaluator (`scripts/evaluate_submission.py`) mean IoU: `0.3959`
+- inference time: `~39 ms / image` on local run
 
 Detailed values are stored in:
 

@@ -37,22 +37,23 @@ DEFAULT_OUTPUT_DIR = THIS_DIR / "artifacts" / "model"
 class ScoredSample:
     class_name: str
     image_name: str
-    output_shape: tuple[int, int]
-    target_full: np.ndarray
     target_small: np.ndarray
     score_map: np.ndarray
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Train paper-aligned one-class anomaly baseline.")
+    parser = argparse.ArgumentParser(description="Train improved paper-aligned one-class anomaly baseline.")
     parser.add_argument("--split-path", type=Path, default=DEFAULT_SPLIT_PATH)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--feature-size", type=int, default=DEFAULT_FEATURE_SIZE)
     parser.add_argument("--eps", type=float, default=FEATURE_EPS)
-    parser.add_argument("--threshold-quantile-low", type=float, default=0.93)
+    parser.add_argument("--threshold-quantile-low", type=float, default=0.80)
     parser.add_argument("--threshold-quantile-high", type=float, default=0.999)
-    parser.add_argument("--threshold-steps", type=int, default=24)
-    parser.add_argument("--min-area-candidates", type=str, default="0,8,16,32,64,128")
+    parser.add_argument("--threshold-steps", type=int, default=20)
+    parser.add_argument("--stage1-top-k", type=int, default=8)
+    parser.add_argument("--min-area-candidates", type=str, default="0,16,32,64,128,256")
+    parser.add_argument("--open-kernel-candidates", type=str, default="1,3,5")
+    parser.add_argument("--close-kernel-candidates", type=str, default="1,3,5")
     return parser.parse_args()
 
 
@@ -92,16 +93,6 @@ def fit_one_class_model(train_samples: list[Any], feature_size: int, eps: float)
     return mean, var
 
 
-def build_small_mask(score_map: np.ndarray, threshold: float, min_area: int) -> np.ndarray:
-    output_shape = score_map.shape
-    return build_binary_mask(
-        score_map=score_map,
-        threshold=threshold,
-        min_area=min_area,
-        output_shape=output_shape,
-    )
-
-
 def score_samples(
     samples: list[Any],
     mean: np.ndarray,
@@ -113,8 +104,10 @@ def score_samples(
     for index, sample in enumerate(samples, start=1):
         image = load_rgb(sample.image_path)
         target_full = load_binary_mask(sample.mask_path, image.shape[:2])
+
         features = extract_features(image=image, feature_size=feature_size)
         score_map = compute_anomaly_map(features=features, mean=mean, var=var, eps=eps)
+
         target_small = np.asarray(
             Image.fromarray(target_full, mode="L").resize((feature_size, feature_size), Image.NEAREST),
             dtype=np.uint8,
@@ -125,8 +118,6 @@ def score_samples(
             ScoredSample(
                 class_name=sample.class_name,
                 image_name=sample.image_path.name,
-                output_shape=target_full.shape,
-                target_full=target_full,
                 target_small=target_small,
                 score_map=score_map,
             )
@@ -141,13 +132,18 @@ def evaluate_grid(
     samples: list[ScoredSample],
     threshold: float,
     min_area: int,
+    open_kernel: int,
+    close_kernel: int,
 ) -> tuple[float, dict[str, float]]:
     per_class: dict[str, list[float]] = defaultdict(list)
     for sample in samples:
-        prediction = build_small_mask(
+        prediction = build_binary_mask(
             score_map=sample.score_map,
             threshold=threshold,
             min_area=min_area,
+            open_kernel=open_kernel,
+            close_kernel=close_kernel,
+            output_shape=sample.score_map.shape,
         )
         score = mean_iou(prediction, sample.target_small)
         per_class[sample.class_name].append(score)
@@ -160,39 +156,155 @@ def evaluate_grid(
     return overall, class_means
 
 
+def otsu_threshold(values: np.ndarray, bins: int = 256) -> float:
+    values = values.astype(np.float64, copy=False)
+    if values.size == 0:
+        return 0.0
+
+    min_value = float(values.min())
+    max_value = float(values.max())
+    if max_value <= min_value:
+        return min_value
+
+    hist, edges = np.histogram(values, bins=bins, range=(min_value, max_value))
+    hist = hist.astype(np.float64)
+    hist_sum = hist.sum()
+    if hist_sum <= 0:
+        return min_value
+
+    prob = hist / hist_sum
+    omega = np.cumsum(prob)
+    centers = (edges[:-1] + edges[1:]) * 0.5
+    mu = np.cumsum(prob * centers)
+    mu_total = mu[-1]
+
+    sigma_b2 = np.square(mu_total * omega - mu) / (omega * (1.0 - omega) + 1e-12)
+    best_index = int(np.argmax(sigma_b2))
+    return float(centers[best_index])
+
+
+def build_threshold_candidates(
+    val_samples: list[ScoredSample],
+    quantile_low: float,
+    quantile_high: float,
+    threshold_steps: int,
+) -> list[float]:
+    all_scores = np.concatenate([sample.score_map.reshape(-1) for sample in val_samples])
+    good_maps = [sample.score_map.reshape(-1) for sample in val_samples if sample.class_name == "good"]
+    good_scores = np.concatenate(good_maps) if good_maps else all_scores
+
+    quantiles = np.linspace(quantile_low, quantile_high, threshold_steps)
+    candidate_values: list[float] = np.quantile(all_scores, quantiles).astype(np.float64).tolist()
+
+    good_mean = float(good_scores.mean())
+    good_std = float(good_scores.std() + 1e-8)
+    for multiplier in (2.0, 2.5, 3.0, 3.5):
+        candidate_values.append(good_mean + multiplier * good_std)
+
+    candidate_values.append(otsu_threshold(all_scores))
+    candidate_values.append(otsu_threshold(good_scores))
+
+    min_value = float(all_scores.min())
+    max_value = float(all_scores.max())
+
+    filtered = [
+        float(value)
+        for value in candidate_values
+        if np.isfinite(value) and (min_value + 1e-8) <= float(value) <= (max_value - 1e-8)
+    ]
+    if not filtered:
+        filtered = [float(np.quantile(all_scores, 0.95))]
+
+    return sorted(set(filtered))
+
+
 def calibrate_threshold(
     val_samples: list[ScoredSample],
     quantile_low: float,
     quantile_high: float,
     threshold_steps: int,
+    stage1_top_k: int,
     min_area_candidates: list[int],
-) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    open_kernel_candidates: list[int],
+    close_kernel_candidates: list[int],
+) -> tuple[dict[str, Any], dict[str, Any]]:
     if not val_samples:
         raise RuntimeError("No validation samples available for threshold calibration.")
 
-    all_scores = np.concatenate([sample.score_map.reshape(-1) for sample in val_samples])
-    quantiles = np.linspace(quantile_low, quantile_high, threshold_steps)
-    thresholds = np.unique(np.quantile(all_scores, quantiles).astype(np.float32))
+    threshold_candidates = build_threshold_candidates(
+        val_samples=val_samples,
+        quantile_low=quantile_low,
+        quantile_high=quantile_high,
+        threshold_steps=threshold_steps,
+    )
 
-    rows: list[dict[str, Any]] = []
-    for threshold in thresholds.tolist():
+    stage1_rows: list[dict[str, Any]] = []
+    for threshold in threshold_candidates:
+        for open_kernel in open_kernel_candidates:
+            for close_kernel in close_kernel_candidates:
+                overall, per_class = evaluate_grid(
+                    samples=val_samples,
+                    threshold=threshold,
+                    min_area=0,
+                    open_kernel=open_kernel,
+                    close_kernel=close_kernel,
+                )
+                stage1_rows.append(
+                    {
+                        "threshold": float(threshold),
+                        "open_kernel": int(open_kernel),
+                        "close_kernel": int(close_kernel),
+                        "min_area": 0,
+                        "val_balanced_mean_iou_small": float(overall),
+                        "val_per_class_iou_small": per_class,
+                    }
+                )
+
+    stage1_sorted = sorted(
+        stage1_rows,
+        key=lambda row: (row["val_balanced_mean_iou_small"], -row["threshold"]),
+        reverse=True,
+    )
+    top_stage1 = stage1_sorted[: max(1, stage1_top_k)]
+
+    stage2_rows: list[dict[str, Any]] = []
+    for config in top_stage1:
         for min_area in min_area_candidates:
-            overall, per_class = evaluate_grid(val_samples, threshold=threshold, min_area=min_area)
-            rows.append(
+            overall, per_class = evaluate_grid(
+                samples=val_samples,
+                threshold=float(config["threshold"]),
+                min_area=min_area,
+                open_kernel=int(config["open_kernel"]),
+                close_kernel=int(config["close_kernel"]),
+            )
+            stage2_rows.append(
                 {
-                    "threshold": float(threshold),
+                    "threshold": float(config["threshold"]),
+                    "open_kernel": int(config["open_kernel"]),
+                    "close_kernel": int(config["close_kernel"]),
                     "min_area": int(min_area),
                     "val_balanced_mean_iou_small": float(overall),
                     "val_per_class_iou_small": per_class,
                 }
             )
 
-    rows_sorted = sorted(
-        rows,
-        key=lambda row: (row["val_balanced_mean_iou_small"], -row["threshold"], -row["min_area"]),
+    stage2_sorted = sorted(
+        stage2_rows,
+        key=lambda row: (
+            row["val_balanced_mean_iou_small"],
+            -row["threshold"],
+            -row["open_kernel"],
+            -row["close_kernel"],
+            -row["min_area"],
+        ),
         reverse=True,
     )
-    return rows_sorted[0], rows_sorted
+
+    return stage2_sorted[0], {
+        "threshold_candidates": [float(value) for value in threshold_candidates],
+        "stage1_top": stage1_sorted[:80],
+        "stage2_top": stage2_sorted[:120],
+    }
 
 
 def summarize_scores(iou_rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -257,10 +369,17 @@ def main() -> None:
         raise RuntimeError("Train split contains defects. This baseline requires one-class training on good only.")
 
     min_area_candidates = parse_int_list(args.min_area_candidates)
+    open_kernel_candidates = parse_int_list(args.open_kernel_candidates)
+    close_kernel_candidates = parse_int_list(args.close_kernel_candidates)
+
     if not min_area_candidates:
         raise ValueError("No min-area candidates provided.")
+    if not open_kernel_candidates or not close_kernel_candidates:
+        raise ValueError("Open/close kernel candidate lists must be non-empty.")
     if any(value < 0 for value in min_area_candidates):
         raise ValueError("min-area candidates must be non-negative.")
+    if any(value < 1 for value in open_kernel_candidates + close_kernel_candidates):
+        raise ValueError("kernel candidates must be positive integers.")
 
     print("Fitting one-class Gaussian model on train/good only...")
     mean, var = fit_one_class_model(
@@ -283,11 +402,17 @@ def main() -> None:
         quantile_low=args.threshold_quantile_low,
         quantile_high=args.threshold_quantile_high,
         threshold_steps=args.threshold_steps,
+        stage1_top_k=args.stage1_top_k,
         min_area_candidates=min_area_candidates,
+        open_kernel_candidates=open_kernel_candidates,
+        close_kernel_candidates=close_kernel_candidates,
     )
+
     print(
         "Selected validation config:",
         f"threshold={best_config['threshold']:.6f}",
+        f"open_kernel={best_config['open_kernel']}",
+        f"close_kernel={best_config['close_kernel']}",
         f"min_area={best_config['min_area']}",
         f"val_balanced_mIoU_small={best_config['val_balanced_mean_iou_small']:.4f}",
     )
@@ -297,6 +422,8 @@ def main() -> None:
         eps=args.eps,
         threshold=float(best_config["threshold"]),
         min_area=int(best_config["min_area"]),
+        open_kernel=int(best_config["open_kernel"]),
+        close_kernel=int(best_config["close_kernel"]),
         mean=mean,
         var=var,
     )
@@ -329,8 +456,10 @@ def main() -> None:
         },
         "selected_thresholding": {
             "threshold": float(best_config["threshold"]),
+            "open_kernel": int(best_config["open_kernel"]),
+            "close_kernel": int(best_config["close_kernel"]),
             "min_area": int(best_config["min_area"]),
-            "selection_objective": "balanced mean IoU on validation (small-map proxy)",
+            "selection_objective": "balanced mean IoU on validation (small-map calibration)",
             "validation_small_proxy_score": float(best_config["val_balanced_mean_iou_small"]),
         },
         "val_metrics": val_metrics,
@@ -338,9 +467,10 @@ def main() -> None:
     }
 
     (output_dir / "training_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    (output_dir / "threshold_search.json").write_text(json.dumps(ranking[:50], indent=2), encoding="utf-8")
+    (output_dir / "threshold_search.json").write_text(json.dumps(ranking, indent=2), encoding="utf-8")
     (output_dir / "val_predictions.json").write_text(json.dumps(val_rows, indent=2), encoding="utf-8")
     (output_dir / "test_predictions.json").write_text(json.dumps(test_rows, indent=2), encoding="utf-8")
+
     print(f"Saved training summary: {output_dir / 'training_summary.json'}")
     print(f"Saved threshold ranking: {output_dir / 'threshold_search.json'}")
     print(f"Validation mean IoU: {val_metrics['mean_iou']:.4f}")
