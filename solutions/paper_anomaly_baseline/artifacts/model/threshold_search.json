@@ -1,0 +1,802 @@
+[
+  {
+    "threshold": 6.438324928283691,
+    "min_area": 128,
+    "val_balanced_mean_iou_small": 0.14426216562833952,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.1720719125002121,
+      "cable_swap": 0.010780965645162916,
+      "combined": 0.12755592265396187,
+      "cut_inner_insulation": 0.022144358794674142,
+      "cut_outer_insulation": 0.3079716613429181,
+      "good": 0.575,
+      "missing_cable": 0.013128672879792818,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.069705996838334
+    }
+  },
+  {
+    "threshold": 7.646888732910156,
+    "min_area": 128,
+    "val_balanced_mean_iou_small": 0.14016737389783926,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.14207912324269628,
+      "cable_swap": 0.0047481343314882025,
+      "combined": 0.12380370727525983,
+      "cut_inner_insulation": 0.01961155850307911,
+      "cut_outer_insulation": 0.2790635502016663,
+      "good": 0.625,
+      "missing_cable": 0.006730229949523275,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.060470061576840324
+    }
+  },
+  {
+    "threshold": 10.100245475769043,
+    "min_area": 64,
+    "val_balanced_mean_iou_small": 0.1390363278309628,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.15472635184538425,
+      "cable_swap": 0.0020826646626718576,
+      "combined": 0.1049155198515036,
+      "cut_inner_insulation": 0.014081780788773288,
+      "cut_outer_insulation": 0.27884012336080444,
+      "good": 0.65,
+      "missing_cable": 0.005051963048498845,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.041628546921028825
+    }
+  },
+  {
+    "threshold": 10.100245475769043,
+    "min_area": 128,
+    "val_balanced_mean_iou_small": 0.1316702634352488,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.12759962638912717,
+      "cable_swap": 0.0020217336365933787,
+      "combined": 0.08189457069546467,
+      "cut_inner_insulation": 0.014081780788773288,
+      "cut_outer_insulation": 0.21266912618488187,
+      "good": 0.7,
+      "missing_cable": 0.005136986301369863,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.041628546921028825
+    }
+  },
+  {
+    "threshold": 21.56069564819336,
+    "min_area": 64,
+    "val_balanced_mean_iou_small": 0.13029847050239735,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.06574242514941508,
+      "cable_swap": 0.0,
+      "combined": 0.0288743338597394,
+      "cut_inner_insulation": 0.00858034321372855,
+      "cut_outer_insulation": 0.10718028239826687,
+      "good": 0.95,
+      "missing_cable": 0.0,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.01230884990042623
+    }
+  },
+  {
+    "threshold": 7.646888732910156,
+    "min_area": 64,
+    "val_balanced_mean_iou_small": 0.12768975678834737,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.17712350074847738,
+      "cable_swap": 0.004680130147660519,
+      "combined": 0.12206878973538351,
+      "cut_inner_insulation": 0.01961155850307911,
+      "cut_outer_insulation": 0.31766679051777685,
+      "good": 0.425,
+      "missing_cable": 0.009067845090534151,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.07398919635221471
+    }
+  },
+  {
+    "threshold": 21.56069564819336,
+    "min_area": 128,
+    "val_balanced_mean_iou_small": 0.12642600346211696,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.03790069834717994,
+      "cable_swap": 0.0,
+      "combined": 0.025100401606425703,
+      "cut_inner_insulation": 0.00858034321372855,
+      "cut_outer_insulation": 0.06625258799171843,
+      "good": 1.0,
+      "missing_cable": 0.0,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.0
+    }
+  },
+  {
+    "threshold": 10.100245475769043,
+    "min_area": 32,
+    "val_balanced_mean_iou_small": 0.12428050705002401,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.15623769738428886,
+      "cable_swap": 0.0020826646626718576,
+      "combined": 0.10449200464367299,
+      "cut_inner_insulation": 0.014081780788773288,
+      "cut_outer_insulation": 0.2861358775414112,
+      "good": 0.4,
+      "missing_cable": 0.005051963048498845,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.1504425753808991
+    }
+  },
+  {
+    "threshold": 5.713196277618408,
+    "min_area": 128,
+    "val_balanced_mean_iou_small": 0.11724323587250415,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.1745250492826284,
+      "cable_swap": 0.01368575066992267,
+      "combined": 0.12346823348272769,
+      "cut_inner_insulation": 0.02348623853211009,
+      "cut_outer_insulation": 0.2542282523701278,
+      "good": 0.375,
+      "missing_cable": 0.015910641864840338,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.07488495665018034
+    }
+  },
+  {
+    "threshold": 21.56069564819336,
+    "min_area": 32,
+    "val_balanced_mean_iou_small": 0.11547916465934614,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.080710731144405,
+      "cable_swap": 0.0,
+      "combined": 0.053848945344621764,
+      "cut_inner_insulation": 0.00858034321372855,
+      "cut_outer_insulation": 0.10718028239826687,
+      "good": 0.775,
+      "missing_cable": 0.0016833299326668026,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.01230884990042623
+    }
+  },
+  {
+    "threshold": 6.438324928283691,
+    "min_area": 64,
+    "val_balanced_mean_iou_small": 0.10967587282627342,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.1925384818660935,
+      "cable_swap": 0.010479768224830233,
+      "combined": 0.12436308769435789,
+      "cut_inner_insulation": 0.022144358794674142,
+      "cut_outer_insulation": 0.26614792831980405,
+      "good": 0.225,
+      "missing_cable": 0.012727330375865481,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.13368190016083548
+    }
+  },
+  {
+    "threshold": 21.56069564819336,
+    "min_area": 16,
+    "val_balanced_mean_iou_small": 0.10640174610992219,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.08115933150913288,
+      "cable_swap": 0.0,
+      "combined": 0.05360466313921152,
+      "cut_inner_insulation": 0.00858034321372855,
+      "cut_outer_insulation": 0.11895175122905811,
+      "good": 0.675,
+      "missing_cable": 0.0016747868453105969,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.018644839052858013
+    }
+  },
+  {
+    "threshold": 7.646888732910156,
+    "min_area": 32,
+    "val_balanced_mean_iou_small": 0.09953381678654859,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.17881472461453093,
+      "cable_swap": 0.006187460067444395,
+      "combined": 0.12211610819085915,
+      "cut_inner_insulation": 0.01961155850307911,
+      "cut_outer_insulation": 0.2753993292796333,
+      "good": 0.15,
+      "missing_cable": 0.008959630186228178,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.13471554023716226
+    }
+  },
+  {
+    "threshold": 21.56069564819336,
+    "min_area": 8,
+    "val_balanced_mean_iou_small": 0.0988223545579226,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.08251954118745983,
+      "cable_swap": 0.0,
+      "combined": 0.053501076943901556,
+      "cut_inner_insulation": 0.00858034321372855,
+      "cut_outer_insulation": 0.12451228794556894,
+      "good": 0.6,
+      "missing_cable": 0.0016747868453105969,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.018613154885333844
+    }
+  },
+  {
+    "threshold": 5.194494247436523,
+    "min_area": 128,
+    "val_balanced_mean_iou_small": 0.0963664551506869,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.16868369146685927,
+      "cable_swap": 0.015613295685529306,
+      "combined": 0.11395418458766679,
+      "cut_inner_insulation": 0.024290220820189272,
+      "cut_outer_insulation": 0.2229724106963788,
+      "good": 0.225,
+      "missing_cable": 0.01781137199114822,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.07897292110841042
+    }
+  },
+  {
+    "threshold": 10.100245475769043,
+    "min_area": 16,
+    "val_balanced_mean_iou_small": 0.09621832599815724,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.15593052227081014,
+      "cable_swap": 0.0020675955062141368,
+      "combined": 0.10659918588247098,
+      "cut_inner_insulation": 0.015436728768449069,
+      "cut_outer_insulation": 0.2823259011994172,
+      "good": 0.175,
+      "missing_cable": 0.0049952426260704095,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.12360975772998324
+    }
+  },
+  {
+    "threshold": 21.56069564819336,
+    "min_area": 0,
+    "val_balanced_mean_iou_small": 0.09371574389653488,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.08353366838002917,
+      "cable_swap": 0.0,
+      "combined": 0.053501076943901556,
+      "cut_inner_insulation": 0.00858034321372855,
+      "cut_outer_insulation": 0.12606508297662483,
+      "good": 0.55,
+      "missing_cable": 0.0016747868453105969,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.02008673670921924
+    }
+  },
+  {
+    "threshold": 5.713196277618408,
+    "min_area": 64,
+    "val_balanced_mean_iou_small": 0.0899740695828721,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.19749985734967618,
+      "cable_swap": 0.01368575066992267,
+      "combined": 0.11854039636122496,
+      "cut_inner_insulation": 0.02348623853211009,
+      "cut_outer_insulation": 0.23126706407930953,
+      "good": 0.075,
+      "missing_cable": 0.015658699008955126,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.1346286202446504
+    }
+  },
+  {
+    "threshold": 10.100245475769043,
+    "min_area": 8,
+    "val_balanced_mean_iou_small": 0.08716662282126347,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.15744412367065364,
+      "cable_swap": 0.002057397706628095,
+      "combined": 0.10896511789493718,
+      "cut_inner_insulation": 0.016210984756835228,
+      "cut_outer_insulation": 0.27345622999476077,
+      "good": 0.1,
+      "missing_cable": 0.0049952426260704095,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.12137050874148587
+    }
+  },
+  {
+    "threshold": 7.646888732910156,
+    "min_area": 16,
+    "val_balanced_mean_iou_small": 0.08713809364932563,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.18077927594477955,
+      "cable_swap": 0.0061278405028303735,
+      "combined": 0.13048777572436268,
+      "cut_inner_insulation": 0.020558976788252012,
+      "cut_outer_insulation": 0.2683268440270973,
+      "good": 0.025,
+      "missing_cable": 0.008866996423074184,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.14409513343353467
+    }
+  },
+  {
+    "threshold": 6.438324928283691,
+    "min_area": 32,
+    "val_balanced_mean_iou_small": 0.08632953777098297,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.1917724210577409,
+      "cable_swap": 0.010386284081294994,
+      "combined": 0.12814332112160542,
+      "cut_inner_insulation": 0.02222157887189422,
+      "cut_outer_insulation": 0.2502777315297284,
+      "good": 0.025,
+      "missing_cable": 0.012585684877255032,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.1365788183993277
+    }
+  },
+  {
+    "threshold": 6.438324928283691,
+    "min_area": 16,
+    "val_balanced_mean_iou_small": 0.08492877068820494,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.19188116266821315,
+      "cable_swap": 0.01021990715348521,
+      "combined": 0.13689224917606424,
+      "cut_inner_insulation": 0.023449406900727866,
+      "cut_outer_insulation": 0.240668856281301,
+      "good": 0.0,
+      "missing_cable": 0.012510646627238433,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.14873670738681455
+    }
+  },
+  {
+    "threshold": 4.792911052703857,
+    "min_area": 128,
+    "val_balanced_mean_iou_small": 0.08447912452005649,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.19106632196320333,
+      "cable_swap": 0.018055753428626864,
+      "combined": 0.110078589917268,
+      "cut_inner_insulation": 0.025283774760738925,
+      "cut_outer_insulation": 0.18975258351007412,
+      "good": 0.125,
+      "missing_cable": 0.018999573090394132,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.08207552401020295
+    }
+  },
+  {
+    "threshold": 6.438324928283691,
+    "min_area": 8,
+    "val_balanced_mean_iou_small": 0.08431741864996428,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.19509643670408625,
+      "cable_swap": 0.010182424880168316,
+      "combined": 0.13653407309722454,
+      "cut_inner_insulation": 0.023154540275936716,
+      "cut_outer_insulation": 0.23523469278609394,
+      "good": 0.0,
+      "missing_cable": 0.012715913720489042,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.14593868638567967
+    }
+  },
+  {
+    "threshold": 7.646888732910156,
+    "min_area": 8,
+    "val_balanced_mean_iou_small": 0.08415604935038318,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.18302709693829158,
+      "cable_swap": 0.006090933316398886,
+      "combined": 0.13176846805488426,
+      "cut_inner_insulation": 0.02051039697542533,
+      "cut_outer_insulation": 0.2668083174220355,
+      "good": 0.0,
+      "missing_cable": 0.008846955000786007,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.140352276445627
+    }
+  },
+  {
+    "threshold": 5.194494247436523,
+    "min_area": 64,
+    "val_balanced_mean_iou_small": 0.0836366404067426,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.19635302903274657,
+      "cable_swap": 0.015496520386690828,
+      "combined": 0.11223743669786237,
+      "cut_inner_insulation": 0.024354098175666757,
+      "cut_outer_insulation": 0.21036116993268328,
+      "good": 0.05,
+      "missing_cable": 0.017308469866001513,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.12661903956903206
+    }
+  },
+  {
+    "threshold": 6.438324928283691,
+    "min_area": 0,
+    "val_balanced_mean_iou_small": 0.08363608783473292,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.19464481879460394,
+      "cable_swap": 0.010202367763994394,
+      "combined": 0.1356111811835802,
+      "cut_inner_insulation": 0.02309625864184041,
+      "cut_outer_insulation": 0.2314065734100087,
+      "good": 0.0,
+      "missing_cable": 0.01269676676630536,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.14506682395226336
+    }
+  },
+  {
+    "threshold": 7.646888732910156,
+    "min_area": 0,
+    "val_balanced_mean_iou_small": 0.08361372847458083,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.18285084123005654,
+      "cable_swap": 0.006083128467832507,
+      "combined": 0.13174013767841516,
+      "cut_inner_insulation": 0.020399529964747358,
+      "cut_outer_insulation": 0.2629630242196585,
+      "good": 0.0,
+      "missing_cable": 0.008893712635443241,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.1395931820750741
+    }
+  },
+  {
+    "threshold": 4.46433687210083,
+    "min_area": 128,
+    "val_balanced_mean_iou_small": 0.08283186883543993,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.19184194185139786,
+      "cable_swap": 0.020114923325349067,
+      "combined": 0.10320759536725291,
+      "cut_inner_insulation": 0.028432885166409523,
+      "cut_outer_insulation": 0.17679392059698423,
+      "good": 0.1,
+      "missing_cable": 0.02018222861434342,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.10491332459722236
+    }
+  },
+  {
+    "threshold": 5.713196277618408,
+    "min_area": 32,
+    "val_balanced_mean_iou_small": 0.08264597212917407,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.19584176607254858,
+      "cable_swap": 0.013393409778066058,
+      "combined": 0.12385430771014541,
+      "cut_inner_insulation": 0.025056833670619928,
+      "cut_outer_insulation": 0.22286154712885892,
+      "good": 0.0,
+      "missing_cable": 0.015454219851677296,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.14735166495065055
+    }
+  },
+  {
+    "threshold": 5.713196277618408,
+    "min_area": 16,
+    "val_balanced_mean_iou_small": 0.08247772834632469,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.20132880130449732,
+      "cable_swap": 0.013170009533813153,
+      "combined": 0.12820741201971325,
+      "cut_inner_insulation": 0.024499243435692035,
+      "cut_outer_insulation": 0.21314319015080815,
+      "good": 0.0,
+      "missing_cable": 0.01573857530712069,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.14621232336527762
+    }
+  },
+  {
+    "threshold": 4.193390846252441,
+    "min_area": 128,
+    "val_balanced_mean_iou_small": 0.08162259460542673,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.19297771065438135,
+      "cable_swap": 0.022086468860217034,
+      "combined": 0.09957056980888211,
+      "cut_inner_insulation": 0.029653192956706115,
+      "cut_outer_insulation": 0.1615267801340417,
+      "good": 0.1,
+      "missing_cable": 0.021094500422251018,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.1076941286123611
+    }
+  },
+  {
+    "threshold": 5.713196277618408,
+    "min_area": 8,
+    "val_balanced_mean_iou_small": 0.08140939530027388,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.20141775006882537,
+      "cable_swap": 0.013075976807535626,
+      "combined": 0.12769169394395793,
+      "cut_inner_insulation": 0.02434102722658265,
+      "cut_outer_insulation": 0.20707274584409993,
+      "good": 0.0,
+      "missing_cable": 0.015609327177590067,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.14347603663387337
+    }
+  },
+  {
+    "threshold": 5.713196277618408,
+    "min_area": 0,
+    "val_balanced_mean_iou_small": 0.0809710525677022,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.2009479374681807,
+      "cable_swap": 0.013000237311033037,
+      "combined": 0.12798176827013566,
+      "cut_inner_insulation": 0.02424467336013985,
+      "cut_outer_insulation": 0.20425601178084424,
+      "good": 0.0,
+      "missing_cable": 0.015564076667268674,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.1427447682517177
+    }
+  },
+  {
+    "threshold": 4.792911052703857,
+    "min_area": 64,
+    "val_balanced_mean_iou_small": 0.08092448781258818,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.20158494288633427,
+      "cable_swap": 0.01790578143834273,
+      "combined": 0.1037412508835412,
+      "cut_inner_insulation": 0.025398783386385848,
+      "cut_outer_insulation": 0.17854760242263606,
+      "good": 0.05,
+      "missing_cable": 0.018523492753031997,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.13261853654302158
+    }
+  },
+  {
+    "threshold": 4.46433687210083,
+    "min_area": 64,
+    "val_balanced_mean_iou_small": 0.08043648467667784,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.20887857322086817,
+      "cable_swap": 0.019931154951932623,
+      "combined": 0.10007755182965103,
+      "cut_inner_insulation": 0.028183137254924384,
+      "cut_outer_insulation": 0.16264638006034146,
+      "good": 0.05,
+      "missing_cable": 0.019772814668519954,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.13443875010386297
+    }
+  },
+  {
+    "threshold": 5.194494247436523,
+    "min_area": 32,
+    "val_balanced_mean_iou_small": 0.07982822609377627,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.20073532281812234,
+      "cable_swap": 0.015232580430562543,
+      "combined": 0.11925152144009335,
+      "cut_inner_insulation": 0.025669244010981786,
+      "cut_outer_insulation": 0.1982619561327802,
+      "good": 0.0,
+      "missing_cable": 0.017222696966306957,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.14208071304513922
+    }
+  },
+  {
+    "threshold": 5.194494247436523,
+    "min_area": 16,
+    "val_balanced_mean_iou_small": 0.07952965565714129,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.2038542968084523,
+      "cable_swap": 0.01495709095192972,
+      "combined": 0.12251287955840291,
+      "cut_inner_insulation": 0.02497304313505288,
+      "cut_outer_insulation": 0.1898723595326084,
+      "good": 0.0,
+      "missing_cable": 0.017279733548522906,
+      "missing_wire": 0.0004702194357366771,
+      "poke_insulation": 0.1418472779435659
+    }
+  },
+  {
+    "threshold": 5.194494247436523,
+    "min_area": 8,
+    "val_balanced_mean_iou_small": 0.07905011473642569,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.20474593572094707,
+      "cable_swap": 0.014803975937730224,
+      "combined": 0.12275404473611316,
+      "cut_inner_insulation": 0.02488180215179489,
+      "cut_outer_insulation": 0.18544214942649606,
+      "good": 0.0,
+      "missing_cable": 0.017198126656647286,
+      "missing_wire": 0.0004626773596545342,
+      "poke_insulation": 0.141162320638448
+    }
+  },
+  {
+    "threshold": 5.194494247436523,
+    "min_area": 0,
+    "val_balanced_mean_iou_small": 0.07872214094104474,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.2046272703746749,
+      "cable_swap": 0.01473282320225417,
+      "combined": 0.1223655936877381,
+      "cut_inner_insulation": 0.024812291086822525,
+      "cut_outer_insulation": 0.18335938814261488,
+      "good": 0.0,
+      "missing_cable": 0.01711492273846841,
+      "missing_wire": 0.00045955882352941176,
+      "poke_insulation": 0.14102742041330024
+    }
+  },
+  {
+    "threshold": 3.964986801147461,
+    "min_area": 128,
+    "val_balanced_mean_iou_small": 0.07771300025487828,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.19350930243710446,
+      "cable_swap": 0.023873356901902437,
+      "combined": 0.09619448310352083,
+      "cut_inner_insulation": 0.030440246097840372,
+      "cut_outer_insulation": 0.14795271708242438,
+      "good": 0.075,
+      "missing_cable": 0.021818407231251266,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.1106284894398607
+    }
+  },
+  {
+    "threshold": 4.792911052703857,
+    "min_area": 16,
+    "val_balanced_mean_iou_small": 0.07699135266835738,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.20408679276272973,
+      "cable_swap": 0.01707590313483461,
+      "combined": 0.11597989001493457,
+      "cut_inner_insulation": 0.02580684865567176,
+      "cut_outer_insulation": 0.16992358990617162,
+      "good": 0.0,
+      "missing_cable": 0.018423296971331906,
+      "missing_wire": 0.000547316384180791,
+      "poke_insulation": 0.14107853618536137
+    }
+  },
+  {
+    "threshold": 3.769495725631714,
+    "min_area": 128,
+    "val_balanced_mean_iou_small": 0.076927768167474,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.19006508238756648,
+      "cable_swap": 0.02528740614206383,
+      "combined": 0.09620293823197333,
+      "cut_inner_insulation": 0.03148607206746742,
+      "cut_outer_insulation": 0.13965212894258605,
+      "good": 0.075,
+      "missing_cable": 0.022242379988106083,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.11241390574750283
+    }
+  },
+  {
+    "threshold": 4.193390846252441,
+    "min_area": 64,
+    "val_balanced_mean_iou_small": 0.07662552537831697,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.20804811063630685,
+      "cable_swap": 0.021682679812914933,
+      "combined": 0.09865254768715516,
+      "cut_inner_insulation": 0.029408031709729526,
+      "cut_outer_insulation": 0.15041622480004435,
+      "good": 0.025,
+      "missing_cable": 0.020671754192006894,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.13575037956669508
+    }
+  },
+  {
+    "threshold": 4.792911052703857,
+    "min_area": 8,
+    "val_balanced_mean_iou_small": 0.07642300468674458,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.20578645641531318,
+      "cable_swap": 0.01691417087988576,
+      "combined": 0.11575185431026003,
+      "cut_inner_insulation": 0.025708069641079273,
+      "cut_outer_insulation": 0.16507384154031857,
+      "good": 0.0,
+      "missing_cable": 0.018258994472139425,
+      "missing_wire": 0.0005440897495765625,
+      "poke_insulation": 0.1397695651721285
+    }
+  },
+  {
+    "threshold": 4.792911052703857,
+    "min_area": 0,
+    "val_balanced_mean_iou_small": 0.07626227888435665,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.20599372101070218,
+      "cable_swap": 0.017129416710507273,
+      "combined": 0.11605158375701997,
+      "cut_inner_insulation": 0.025567918827281304,
+      "cut_outer_insulation": 0.16311270594737043,
+      "good": 0.0,
+      "missing_cable": 0.018174799643129284,
+      "missing_wire": 0.0005393456352693116,
+      "poke_insulation": 0.13979101842793004
+    }
+  },
+  {
+    "threshold": 4.792911052703857,
+    "min_area": 32,
+    "val_balanced_mean_iou_small": 0.07595058593997644,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.20210114822247888,
+      "cable_swap": 0.017497680890538034,
+      "combined": 0.11163882017285942,
+      "cut_inner_insulation": 0.026290499735330826,
+      "cut_outer_insulation": 0.17313052650165828,
+      "good": 0.0,
+      "missing_cable": 0.018369168500167794,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.13452742943675494
+    }
+  },
+  {
+    "threshold": 3.964986801147461,
+    "min_area": 64,
+    "val_balanced_mean_iou_small": 0.07581375023146135,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.20810726677231273,
+      "cable_swap": 0.022991812662538965,
+      "combined": 0.0956665235211479,
+      "cut_inner_insulation": 0.030349710326234354,
+      "cut_outer_insulation": 0.14320741365716333,
+      "good": 0.025,
+      "missing_cable": 0.021475924644975723,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.1355251004987791
+    }
+  },
+  {
+    "threshold": 4.46433687210083,
+    "min_area": 32,
+    "val_balanced_mean_iou_small": 0.07560943187994132,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.20744368016138653,
+      "cable_swap": 0.019105274678603137,
+      "combined": 0.10666331910503452,
+      "cut_inner_insulation": 0.027149498013297968,
+      "cut_outer_insulation": 0.1595431256055484,
+      "good": 0.0,
+      "missing_cable": 0.019925702870657903,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.14065428648494338
+    }
+  },
+  {
+    "threshold": 4.46433687210083,
+    "min_area": 8,
+    "val_balanced_mean_iou_small": 0.07521015865653247,
+    "val_per_class_iou_small": {
+      "bent_wire": 0.20691269454598685,
+      "cable_swap": 0.019088908360923175,
+      "combined": 0.11219063597877696,
+      "cut_inner_insulation": 0.02624865960606803,
+      "cut_outer_insulation": 0.15087449694129312,
+      "good": 0.0,
+      "missing_cable": 0.019428634798398837,
+      "missing_wire": 0.0009923681028239783,
+      "poke_insulation": 0.14115502957452133
+    }
+  }
+]

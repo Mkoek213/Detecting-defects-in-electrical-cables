@@ -1,0 +1,45 @@
+{
+  "created_at": "2026-03-30",
+  "split_manifest": "solutions/paper_anomaly_baseline/artifacts/split.json",
+  "data_usage": {
+    "anomaly_model_fitting": "train split, class=good only (189 images)",
+    "threshold_calibration": "val split, all classes with masks (74 images)",
+    "evaluation": "test split, all classes with masks (91 images)"
+  },
+  "selected_thresholding": {
+    "threshold": 6.438324928283691,
+    "min_area": 128
+  },
+  "validation_metrics": {
+    "mean_iou": 0.35232190579144035,
+    "balanced_mean_iou": 0.14384286745056812,
+    "per_class_iou": {
+      "bent_wire": 0.17147319540894265,
+      "cable_swap": 0.01124625978800121,
+      "combined": 0.12777909384679528,
+      "cut_inner_insulation": 0.022004604937192154,
+      "cut_outer_insulation": 0.3042238188092957,
+      "good": 0.575,
+      "missing_cable": 0.013074572905030507,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.0697842613598554
+    },
+    "mean_runtime_ms": 21.166304783823637
+  },
+  "test_metrics": {
+    "mean_iou": 0.24163695614532762,
+    "balanced_mean_iou": 0.10942506158453817,
+    "per_class_iou": {
+      "bent_wire": 0.12845667834491245,
+      "cable_swap": 0.00013040917917609926,
+      "combined": 0.10891934295206958,
+      "cut_inner_insulation": 0.004154374607848386,
+      "cut_outer_insulation": 0.24781467768380291,
+      "good": 0.4634146341463415,
+      "missing_cable": 0.0016758834142549105,
+      "missing_wire": 0.0,
+      "poke_insulation": 0.030259553932437722
+    },
+    "mean_runtime_ms": 21.64152818693185
+  }
+}
