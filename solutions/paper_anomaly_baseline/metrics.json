@@ -1,45 +1,128 @@
 {
-  "created_at": "2026-03-30",
+  "created_at": "2026-04-02",
   "split_manifest": "solutions/paper_anomaly_baseline/artifacts/split.json",
+  "best_backend": "padim_resnet18_diag",
   "data_usage": {
     "anomaly_model_fitting": "train split, class=good only (189 images)",
     "threshold_calibration": "val split, all classes with masks (74 images)",
     "evaluation": "test split, all classes with masks (91 images)"
   },
-  "selected_thresholding": {
-    "threshold": 6.438324928283691,
-    "min_area": 128
-  },
-  "validation_metrics": {
-    "mean_iou": 0.35232190579144035,
-    "balanced_mean_iou": 0.14384286745056812,
-    "per_class_iou": {
-      "bent_wire": 0.17147319540894265,
-      "cable_swap": 0.01124625978800121,
-      "combined": 0.12777909384679528,
-      "cut_inner_insulation": 0.022004604937192154,
-      "cut_outer_insulation": 0.3042238188092957,
-      "good": 0.575,
-      "missing_cable": 0.013074572905030507,
-      "missing_wire": 0.0,
-      "poke_insulation": 0.0697842613598554
+  "backends": {
+    "handcrafted_union_ensemble": {
+      "artifact": "solutions/paper_anomaly_baseline/artifacts/model/model_artifact.npz",
+      "inference_entrypoint": "solutions/paper_anomaly_baseline/sample_submission/model.py",
+      "description": "Two-branch handcrafted anomaly ensemble at feature sizes 192 and 256.",
+      "validation_metrics": {
+        "mean_iou": 0.552813318408915,
+        "balanced_mean_iou": 0.18466156563121883,
+        "per_class_iou": {
+          "bent_wire": 0.05532813956758078,
+          "cable_swap": 0.003575003575003575,
+          "combined": 0.08989282570038384,
+          "cut_inner_insulation": 0.005041059968256159,
+          "cut_outer_insulation": 0.3483541570076139,
+          "good": 0.95,
+          "missing_cable": 0.0,
+          "missing_wire": 0.0,
+          "poke_insulation": 0.20976290486213142
+        },
+        "mean_runtime_ms": 87.86450136495979
+      },
+      "test_metrics": {
+        "mean_iou": 0.4172314800676095,
+        "balanced_mean_iou": 0.15743447357517024,
+        "per_class_iou": {
+          "bent_wire": 0.03544958938362575,
+          "cable_swap": 0.0,
+          "combined": 0.08056802048817675,
+          "cut_inner_insulation": 0.00011295298040071043,
+          "cut_outer_insulation": 0.23024097056010867,
+          "good": 0.8536585365853658,
+          "missing_cable": 0.0,
+          "missing_wire": 0.0,
+          "poke_insulation": 0.21688019217885465
+        },
+        "mean_runtime_ms": 89.45357406602332
+      },
+      "full_local_eval": {
+        "script": "scripts/evaluate_submission.py",
+        "mean_iou": 0.39904807883393983,
+        "mean_runtime_ms": 91.78
+      }
     },
-    "mean_runtime_ms": 21.166304783823637
-  },
-  "test_metrics": {
-    "mean_iou": 0.24163695614532762,
-    "balanced_mean_iou": 0.10942506158453817,
-    "per_class_iou": {
-      "bent_wire": 0.12845667834491245,
-      "cable_swap": 0.00013040917917609926,
-      "combined": 0.10891934295206958,
-      "cut_inner_insulation": 0.004154374607848386,
-      "cut_outer_insulation": 0.24781467768380291,
-      "good": 0.4634146341463415,
-      "missing_cable": 0.0016758834142549105,
-      "missing_wire": 0.0,
-      "poke_insulation": 0.030259553932437722
-    },
-    "mean_runtime_ms": 21.64152818693185
+    "padim_resnet18_diag": {
+      "artifact": "solutions/paper_anomaly_baseline/artifacts/padim/model_artifact_padim.pt",
+      "inference_entrypoint": "solutions/paper_anomaly_baseline/sample_submission/model_padim.py",
+      "description": "Pretrained ResNet18 PaDiM-style diagonal Gaussian anomaly backend with 160 selected channels.",
+      "threshold_config": {
+        "threshold": 102.06788494783265,
+        "threshold_scale": 0.85,
+        "open_kernel": 5,
+        "close_kernel": 3,
+        "min_area": 64,
+        "final_dilate_kernel": 7
+      },
+      "validation_metrics": {
+        "mean_iou": 0.4618158057145893,
+        "balanced_mean_iou": 0.1918653814839693,
+        "defect_balanced_mean_iou": 0.1220985541694655,
+        "per_class_iou": {
+          "bent_wire": 0.10070416782585108,
+          "cable_swap": 0.19258607017717902,
+          "combined": 0.09752135823371952,
+          "cut_inner_insulation": 0.16651172163086447,
+          "cut_outer_insulation": 0.10907329537826049,
+          "good": 0.75,
+          "missing_cable": 0.11269643580204888,
+          "missing_wire": 0.056680074701910645,
+          "poke_insulation": 0.1410153096058898
+        },
+        "mean_runtime_ms": 257.2952771078653
+      },
+      "test_metrics": {
+        "mean_iou": 0.4003110859591662,
+        "balanced_mean_iou": 0.18226747192944776,
+        "defect_balanced_mean_iou": 0.11053871079867747,
+        "per_class_iou": {
+          "bent_wire": 0.22362894317029483,
+          "cable_swap": 0.0,
+          "combined": 0.16426833120095333,
+          "cut_inner_insulation": 0.06904539159716946,
+          "cut_outer_insulation": 0.13408062187630504,
+          "good": 0.7560975609756098,
+          "missing_cable": 0.0940489990019863,
+          "missing_wire": 0.012173198742555645,
+          "poke_insulation": 0.18706420080015523
+        },
+        "mean_runtime_ms": 251.27290172539497
+      },
+      "full_local_eval": {
+        "script": "scripts/evaluate_submission.py",
+        "mean_iou": 0.4200212301307422,
+        "mean_runtime_ms": 260.17,
+        "per_class_iou": {
+          "bent_wire": 0.17241,
+          "cable_swap": 0.070031,
+          "combined": 0.13757,
+          "cut_inner_insulation": 0.106532,
+          "cut_outer_insulation": 0.122966,
+          "good": 0.978261,
+          "missing_cable": 0.10083,
+          "missing_wire": 0.031954,
+          "poke_insulation": 0.166598
+        }
+      },
+      "submission_bundle": {
+        "zip_path": "solutions/paper_anomaly_baseline/artifacts/paper_anomaly_baseline_submission.zip",
+        "bundle_files": [
+          "model.py",
+          "requirements.txt",
+          "model_artifact_padim.pt",
+          "padim_runtime.py"
+        ],
+        "artifact_size_mb": 52.0,
+        "bundle_runtime_ms": 260.17
+      }
+    }
   }
 }

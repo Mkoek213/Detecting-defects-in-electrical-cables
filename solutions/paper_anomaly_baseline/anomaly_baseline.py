@@ -12,6 +12,7 @@ from PIL import Image, ImageFilter
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_FEATURE_SIZE = 256
+DEFAULT_ENSEMBLE_FEATURE_SIZES = (192, 256)
 FEATURE_EPS = 1e-6
 LOCAL_NORMALIZATION_KERNEL = 31
 LOCAL_CONTRAST_KERNEL = 9
@@ -29,15 +30,23 @@ class SplitSample:
 
 
 @dataclass(frozen=True)
-class ModelArtifact:
+class BranchArtifact:
     feature_size: int
-    eps: float
     threshold: float
+    threshold_scale: float
     min_area: int
     open_kernel: int
     close_kernel: int
     mean: np.ndarray
     var: np.ndarray
+
+
+@dataclass(frozen=True)
+class ModelArtifact:
+    eps: float
+    branches: tuple[BranchArtifact, ...]
+    ensemble_mode: str = "union"
+    final_dilate_kernel: int = 1
 
 
 def load_split_manifest(path: Path) -> dict[str, Any]:
@@ -307,6 +316,15 @@ def build_binary_mask(
     return (resized > 0).astype(np.uint8) * 255
 
 
+def apply_final_dilation(mask: np.ndarray, dilate_kernel: int) -> np.ndarray:
+    if dilate_kernel <= 1:
+        return mask.astype(np.uint8, copy=False)
+
+    size = _normalize_kernel_size(dilate_kernel)
+    dilated = Image.fromarray(mask.astype(np.uint8), mode="L").filter(ImageFilter.MaxFilter(size))
+    return (np.asarray(dilated, dtype=np.uint8) > 0).astype(np.uint8) * 255
+
+
 def mean_iou(prediction: np.ndarray, target: np.ndarray) -> float:
     prediction_bin = prediction > 0
     target_bin = target > 0
@@ -317,44 +335,111 @@ def mean_iou(prediction: np.ndarray, target: np.ndarray) -> float:
 
 def save_model_artifact(path: Path, artifact: ModelArtifact) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(
-        path,
-        feature_size=np.array(artifact.feature_size, dtype=np.int32),
-        eps=np.array(artifact.eps, dtype=np.float32),
-        threshold=np.array(artifact.threshold, dtype=np.float32),
-        min_area=np.array(artifact.min_area, dtype=np.int32),
-        open_kernel=np.array(artifact.open_kernel, dtype=np.int32),
-        close_kernel=np.array(artifact.close_kernel, dtype=np.int32),
-        mean=artifact.mean.astype(np.float32),
-        var=artifact.var.astype(np.float32),
-    )
+    arrays: dict[str, np.ndarray] = {
+        "artifact_version": np.array(2, dtype=np.int32),
+        "eps": np.array(artifact.eps, dtype=np.float32),
+        "ensemble_mode": np.array(artifact.ensemble_mode),
+        "num_branches": np.array(len(artifact.branches), dtype=np.int32),
+        "final_dilate_kernel": np.array(artifact.final_dilate_kernel, dtype=np.int32),
+    }
+    for index, branch in enumerate(artifact.branches):
+        arrays[f"feature_size_{index}"] = np.array(branch.feature_size, dtype=np.int32)
+        arrays[f"threshold_{index}"] = np.array(branch.threshold, dtype=np.float32)
+        arrays[f"threshold_scale_{index}"] = np.array(branch.threshold_scale, dtype=np.float32)
+        arrays[f"min_area_{index}"] = np.array(branch.min_area, dtype=np.int32)
+        arrays[f"open_kernel_{index}"] = np.array(branch.open_kernel, dtype=np.int32)
+        arrays[f"close_kernel_{index}"] = np.array(branch.close_kernel, dtype=np.int32)
+        arrays[f"mean_{index}"] = branch.mean.astype(np.float32)
+        arrays[f"var_{index}"] = branch.var.astype(np.float32)
+    np.savez_compressed(path, **arrays)
 
 
 def load_model_artifact(path: Path) -> ModelArtifact:
     params = np.load(path)
-    open_kernel = int(params["open_kernel"]) if "open_kernel" in params.files else 1
-    close_kernel = int(params["close_kernel"]) if "close_kernel" in params.files else 1
+    if "num_branches" not in params.files:
+        open_kernel = int(params["open_kernel"]) if "open_kernel" in params.files else 1
+        close_kernel = int(params["close_kernel"]) if "close_kernel" in params.files else 1
+        branch = BranchArtifact(
+            feature_size=int(params["feature_size"]),
+            threshold=float(params["threshold"]),
+            threshold_scale=1.0,
+            min_area=int(params["min_area"]),
+            open_kernel=open_kernel,
+            close_kernel=close_kernel,
+            mean=params["mean"].astype(np.float32),
+            var=params["var"].astype(np.float32),
+        )
+        return ModelArtifact(
+            eps=float(params["eps"]),
+            branches=(branch,),
+            ensemble_mode="union",
+            final_dilate_kernel=1,
+        )
 
+    num_branches = int(params["num_branches"])
+    branches: list[BranchArtifact] = []
+    for index in range(num_branches):
+        branches.append(
+            BranchArtifact(
+                feature_size=int(params[f"feature_size_{index}"]),
+                threshold=float(params[f"threshold_{index}"]),
+                threshold_scale=float(params[f"threshold_scale_{index}"])
+                if f"threshold_scale_{index}" in params.files
+                else 1.0,
+                min_area=int(params[f"min_area_{index}"]),
+                open_kernel=int(params[f"open_kernel_{index}"]),
+                close_kernel=int(params[f"close_kernel_{index}"]),
+                mean=params[f"mean_{index}"].astype(np.float32),
+                var=params[f"var_{index}"].astype(np.float32),
+            )
+        )
+    ensemble_mode = str(params["ensemble_mode"]) if "ensemble_mode" in params.files else "union"
     return ModelArtifact(
-        feature_size=int(params["feature_size"]),
         eps=float(params["eps"]),
-        threshold=float(params["threshold"]),
-        min_area=int(params["min_area"]),
-        open_kernel=open_kernel,
-        close_kernel=close_kernel,
-        mean=params["mean"].astype(np.float32),
-        var=params["var"].astype(np.float32),
+        branches=tuple(branches),
+        ensemble_mode=ensemble_mode,
+        final_dilate_kernel=int(params["final_dilate_kernel"]) if "final_dilate_kernel" in params.files else 1,
+    )
+
+
+def predict_branch_mask_from_score_map(
+    score_map: np.ndarray,
+    output_shape: tuple[int, int],
+    branch: BranchArtifact,
+) -> np.ndarray:
+    return build_binary_mask(
+        score_map=score_map,
+        threshold=branch.threshold * branch.threshold_scale,
+        min_area=branch.min_area,
+        output_shape=output_shape,
+        open_kernel=branch.open_kernel,
+        close_kernel=branch.close_kernel,
+    )
+
+
+def predict_branch_mask(image: np.ndarray, branch: BranchArtifact, eps: float = FEATURE_EPS) -> np.ndarray:
+    features = extract_features(image=image, feature_size=branch.feature_size)
+    score_map = compute_anomaly_map(features=features, mean=branch.mean, var=branch.var, eps=eps)
+    return predict_branch_mask_from_score_map(
+        score_map=score_map,
+        output_shape=image.shape[:2],
+        branch=branch,
     )
 
 
 def predict_with_artifact(image: np.ndarray, artifact: ModelArtifact) -> np.ndarray:
-    features = extract_features(image=image, feature_size=artifact.feature_size)
-    score_map = compute_anomaly_map(features=features, mean=artifact.mean, var=artifact.var, eps=artifact.eps)
-    return build_binary_mask(
-        score_map=score_map,
-        threshold=artifact.threshold,
-        min_area=artifact.min_area,
-        output_shape=image.shape[:2],
-        open_kernel=artifact.open_kernel,
-        close_kernel=artifact.close_kernel,
-    )
+    branch_masks = [
+        predict_branch_mask(image=image, branch=branch, eps=artifact.eps)
+        for branch in artifact.branches
+    ]
+    if not branch_masks:
+        raise RuntimeError("Model artifact does not contain any branches.")
+    if len(branch_masks) == 1:
+        return branch_masks[0]
+    if artifact.ensemble_mode != "union":
+        raise ValueError(f"Unsupported ensemble mode: {artifact.ensemble_mode}")
+
+    merged = np.zeros_like(branch_masks[0], dtype=np.uint8)
+    for branch_mask in branch_masks:
+        merged = np.maximum(merged, branch_mask.astype(np.uint8))
+    return apply_final_dilation(merged, artifact.final_dilate_kernel)
