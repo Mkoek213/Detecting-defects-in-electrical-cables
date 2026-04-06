@@ -9,15 +9,45 @@ from PIL import Image, ImageFilter
 
 _ROOT = Path(__file__).resolve().parent
 _PARAMS = np.load(_ROOT / "model_artifact.npz")
-
-_FEATURE_SIZE = int(_PARAMS["feature_size"])
 _EPS = float(_PARAMS["eps"])
-_THRESHOLD = float(_PARAMS["threshold"])
-_MIN_AREA = int(_PARAMS["min_area"])
-_OPEN_KERNEL = int(_PARAMS["open_kernel"]) if "open_kernel" in _PARAMS.files else 1
-_CLOSE_KERNEL = int(_PARAMS["close_kernel"]) if "close_kernel" in _PARAMS.files else 1
-_MEAN = _PARAMS["mean"].astype(np.float32)
-_VAR = _PARAMS["var"].astype(np.float32)
+_ENSEMBLE_MODE = str(_PARAMS["ensemble_mode"]) if "ensemble_mode" in _PARAMS.files else "union"
+_FINAL_DILATE_KERNEL = int(_PARAMS["final_dilate_kernel"]) if "final_dilate_kernel" in _PARAMS.files else 1
+
+
+def _load_branches() -> list[dict[str, np.ndarray | int | float]]:
+    if "num_branches" in _PARAMS.files:
+        num_branches = int(_PARAMS["num_branches"])
+        return [
+            {
+                "feature_size": int(_PARAMS[f"feature_size_{index}"]),
+                "threshold": float(_PARAMS[f"threshold_{index}"]),
+                "threshold_scale": float(_PARAMS[f"threshold_scale_{index}"])
+                if f"threshold_scale_{index}" in _PARAMS.files
+                else 1.0,
+                "min_area": int(_PARAMS[f"min_area_{index}"]),
+                "open_kernel": int(_PARAMS[f"open_kernel_{index}"]),
+                "close_kernel": int(_PARAMS[f"close_kernel_{index}"]),
+                "mean": _PARAMS[f"mean_{index}"].astype(np.float32),
+                "var": _PARAMS[f"var_{index}"].astype(np.float32),
+            }
+            for index in range(num_branches)
+        ]
+
+    return [
+        {
+            "feature_size": int(_PARAMS["feature_size"]),
+            "threshold": float(_PARAMS["threshold"]),
+            "threshold_scale": 1.0,
+            "min_area": int(_PARAMS["min_area"]),
+            "open_kernel": int(_PARAMS["open_kernel"]) if "open_kernel" in _PARAMS.files else 1,
+            "close_kernel": int(_PARAMS["close_kernel"]) if "close_kernel" in _PARAMS.files else 1,
+            "mean": _PARAMS["mean"].astype(np.float32),
+            "var": _PARAMS["var"].astype(np.float32),
+        }
+    ]
+
+
+_BRANCHES = _load_branches()
 
 
 def _box_blur_2d(image: np.ndarray, kernel_size: int) -> np.ndarray:
@@ -95,9 +125,9 @@ def _compute_sobel_laplacian(luma: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return grad_norm.astype(np.float32), lap_norm.astype(np.float32)
 
 
-def _extract_features(image: np.ndarray) -> np.ndarray:
+def _extract_features(image: np.ndarray, feature_size: int) -> np.ndarray:
     resized_u8 = np.asarray(
-        Image.fromarray(image, mode="RGB").resize((_FEATURE_SIZE, _FEATURE_SIZE), Image.BILINEAR),
+        Image.fromarray(image, mode="RGB").resize((feature_size, feature_size), Image.BILINEAR),
         dtype=np.uint8,
     )
     resized = resized_u8.astype(np.float32) / 255.0
@@ -123,7 +153,7 @@ def _extract_features(image: np.ndarray) -> np.ndarray:
     radial_distance = np.sqrt((yy - center_y) ** 2 + (xx - center_x) ** 2)
     radial_distance /= radial_distance.max() + 1e-6
 
-    features = np.concatenate(
+    return np.concatenate(
         [
             normalized_rgb,
             luma_eq[..., None],
@@ -135,8 +165,7 @@ def _extract_features(image: np.ndarray) -> np.ndarray:
             radial_distance[..., None],
         ],
         axis=2,
-    )
-    return features.astype(np.float32)
+    ).astype(np.float32)
 
 
 def _normalize_kernel_size(kernel_size: int) -> int:
@@ -204,24 +233,48 @@ def _remove_small_components(mask: np.ndarray, min_area: int) -> np.ndarray:
     return output
 
 
-def predict(image: np.ndarray) -> np.ndarray:
-    if image.ndim != 3 or image.shape[2] != 3:
-        raise ValueError("Expected RGB image with shape (H, W, 3).")
-    if image.dtype != np.uint8:
-        raise ValueError("Expected uint8 image.")
-
-    features = _extract_features(image)
-    z_squared = np.square(features - _MEAN) / (_VAR + _EPS)
+def _predict_branch_mask(image: np.ndarray, branch: dict[str, np.ndarray | int | float]) -> np.ndarray:
+    feature_size = int(branch["feature_size"])
+    features = _extract_features(image, feature_size=feature_size)
+    mean = branch["mean"]
+    var = branch["var"]
+    z_squared = np.square(features - mean) / (var + _EPS)
     score_map = 0.85 * np.mean(z_squared, axis=2, dtype=np.float32) + 0.15 * np.max(z_squared, axis=2)
     score_map = _box_blur_2d(score_map, kernel_size=7)
 
-    small_mask = score_map >= _THRESHOLD
-    small_mask = _apply_morphology(small_mask, open_kernel=_OPEN_KERNEL, close_kernel=_CLOSE_KERNEL)
-    small_mask = _remove_small_components(small_mask, min_area=_MIN_AREA)
+    small_mask = score_map >= (float(branch["threshold"]) * float(branch["threshold_scale"]))
+    small_mask = _apply_morphology(
+        small_mask,
+        open_kernel=int(branch["open_kernel"]),
+        close_kernel=int(branch["close_kernel"]),
+    )
+    small_mask = _remove_small_components(small_mask, min_area=int(branch["min_area"]))
     small_mask_u8 = small_mask.astype(np.uint8) * 255
-
     full_mask = np.asarray(
         Image.fromarray(small_mask_u8, mode="L").resize((image.shape[1], image.shape[0]), Image.NEAREST),
         dtype=np.uint8,
     )
     return (full_mask > 0).astype(np.uint8) * 255
+
+
+def _apply_final_dilation(mask: np.ndarray, dilate_kernel: int) -> np.ndarray:
+    if dilate_kernel <= 1:
+        return mask.astype(np.uint8, copy=False)
+
+    size = _normalize_kernel_size(dilate_kernel)
+    pil_mask = Image.fromarray(mask.astype(np.uint8), mode="L").filter(ImageFilter.MaxFilter(size))
+    return (np.asarray(pil_mask, dtype=np.uint8) > 0).astype(np.uint8) * 255
+
+
+def predict(image: np.ndarray) -> np.ndarray:
+    if image.ndim != 3 or image.shape[2] != 3:
+        raise ValueError("Expected RGB image with shape (H, W, 3).")
+    if image.dtype != np.uint8:
+        raise ValueError("Expected uint8 image.")
+    if _ENSEMBLE_MODE != "union":
+        raise ValueError(f"Unsupported ensemble mode: {_ENSEMBLE_MODE}")
+
+    merged = np.zeros(image.shape[:2], dtype=bool)
+    for branch in _BRANCHES:
+        merged |= _predict_branch_mask(image, branch) > 0
+    return _apply_final_dilation(merged.astype(np.uint8) * 255, _FINAL_DILATE_KERNEL)

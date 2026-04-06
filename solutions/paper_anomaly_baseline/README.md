@@ -1,112 +1,163 @@
-# Paper-Aligned Anomaly Baseline (Second Solution)
+# Paper-Aligned Anomaly Backends
 
-This folder contains a **separate**, literature-aligned anomaly-detection baseline for cable defect segmentation.
-It does not modify the existing high-scoring submission in the repository root.
+This folder contains a separate, literature-aligned anomaly track for cable defect segmentation.
+It stays isolated from the existing root submission and keeps the one-class constraint from `AGENT_BRIEF.md`.
 
-## Alignment with MVTec AD / Bergmann et al. (CVPR 2019)
+## Current Best Backend
 
-The workflow follows the one-class anomaly philosophy used for MVTec AD:
+Best verified local submission: **`padim_resnet18_diag`**
 
-- anomaly model fitting uses **only defect-free (`good`) images**
-- defective images and masks are used only for:
-  - validation/model-selection
-  - threshold calibration
-  - final evaluation
-- no nearest-neighbor memorization over defective masks
-- no supervised defect-mask segmentation training as the primary method
+- pretrained `ResNet18` feature extractor
+- PaDiM-style per-location diagonal Gaussian anomaly model
+- fit on `train/good` only
+- thresholding and postprocessing calibrated on `val`
+- packaged submission uses:
+  - `model.py`
+  - `padim_runtime.py`
+  - `model_artifact_padim.pt`
+  - `requirements.txt`
 
-## Method Summary
+Best full local evaluator result:
 
-Model type: **PaDiM-style per-location Gaussian anomaly model (diagonal covariance)** on deterministic hand-crafted features:
+- mean IoU: `0.420021`
+- average inference time: `260.17 ms / image`
 
-- resized image features at fixed spatial grid (`feature_size`, default 256)
-- normalized RGB + histogram-equalized luminance + CLAHE-like local normalization
-- Sobel gradient magnitude + Laplacian response + local contrast + saturation + radial-position prior
-- per-location mean/variance estimated from normal training data
-- anomaly score = per-location Mahalanobis-like z-score (diagonal)
-- binary mask via validation-calibrated threshold + morphology (opening/closing) + component filtering
+Previous handcrafted union ensemble is still kept as a lighter fallback, but it is no longer the best local result.
 
-Inference artifact is lightweight (`model_artifact.npz`) and runtime code only depends on `numpy` and `Pillow`.
+## Alignment With MVTec AD / Bergmann et al.
+
+- anomaly model fitting uses only defect-free `good` images
+- defective images and masks are used only for validation, calibration, and evaluation
+- no supervised defect-mask training is used as the main method in this track
+- no defective masks are used during anomaly-model fitting
 
 ## Data Split Logic
 
-Use `prepare_data.py` to build a deterministic manifest from `data/cable/`:
+Use `prepare_data.py` to create the deterministic manifest from `data/cable/`:
 
 - `train`: only `good`
-- `val`: `good` + all defect classes (stratified defect split)
-- `test`: `good` + all defect classes (remaining samples)
+- `val`: `good` + defects
+- `test`: `good` + defects
 
-This explicitly enforces:
+This enforces:
 
-- anomaly-model fitting: `train/good` only
-- threshold calibration: `val` (good + defective)
-- evaluation: `test` (good + defective)
+- fitting: `train/good` only
+- threshold calibration: `val`
+- reporting: `test`
 
-## Files
+## Main Files
 
-- `prepare_data.py`: deterministic split manifest creation
-- `train.py`: one-class fit, threshold calibration, metric export, artifact save
-- `evaluate.py`: standalone evaluation on `val` or `test`
-- `export_submission.py`: copies trained artifact into local `sample_submission/` and creates zip bundle
-- `anomaly_baseline.py`: shared core functions for training/evaluation
-- `sample_submission/model.py`: final `predict(image)` implementation
-- `sample_submission/requirements.txt`: inference dependencies
+- `prepare_data.py`: deterministic split manifest
+- `anomaly_baseline.py`: handcrafted anomaly backend
+- `train.py`: handcrafted backend training/calibration
+- `padim_backend.py`: deep PaDiM-style backend utilities
+- `train_padim.py`: pretrained `ResNet18` PaDiM backend training/calibration
+- `export_submission.py`: backend-aware bundle export
+- `sample_submission/model_padim.py`: local entrypoint for PaDiM submission runtime
+- `sample_submission/padim_runtime.py`: packaged PaDiM inference helper
 
-## Run
+## Recommended Run
 
 From repository root:
 
 ```bash
 ./.venv/bin/python solutions/paper_anomaly_baseline/prepare_data.py
-./.venv/bin/python solutions/paper_anomaly_baseline/train.py --threshold-steps 16 --stage1-top-k 6 --min-area-candidates 0,32,64,128 --open-kernel-candidates 1,3,5 --close-kernel-candidates 1,3
-./.venv/bin/python solutions/paper_anomaly_baseline/evaluate.py --split test --output-path solutions/paper_anomaly_baseline/artifacts/model/test_eval.json
-./.venv/bin/python solutions/paper_anomaly_baseline/export_submission.py
+./.venv/bin/python solutions/paper_anomaly_baseline/train_padim.py --image-size 256 --selected-dims 160 --batch-size 8
+./.venv/bin/python scripts/evaluate_submission.py --model-path solutions/paper_anomaly_baseline/sample_submission/model_padim.py
+./.venv/bin/python solutions/paper_anomaly_baseline/export_submission.py --backend padim
 ```
 
-## Expected Artifacts
+The training script expects pretrained `ResNet18` weights at:
 
-- `artifacts/split.json`
-- `artifacts/model/model_artifact.npz`
-- `artifacts/model/training_summary.json`
-- `artifacts/model/threshold_search.json`
-- `artifacts/model/val_predictions.json`
-- `artifacts/model/test_predictions.json`
-- `sample_submission/model_artifact.npz` (after export)
-- `artifacts/submission_bundle/` and zipped archive
+```bash
+.torch_cache/hub/checkpoints/resnet18-f37072fd.pth
+```
 
-## Local Results (2026-03-30)
+## Verified Local Results
 
-Deterministic split used (`seed=20260330`):
+### `padim_resnet18_diag`
 
-- train: 189 (`good` only)
-- val: 74 (`good` + defects)
-- test: 91 (`good` + defects)
+Configuration:
 
-Selected thresholding:
+- image size: `256`
+- selected feature dimensions: `160`
+- threshold: `102.0678849`
+- threshold scale: `0.85`
+- opening: `5`
+- closing: `3`
+- min area: `64`
+- final dilation: `7`
 
-- score threshold: `20.0107497`
-- opening kernel: `3`
-- closing kernel: `3`
-- min component area (feature grid): `32`
+Split metrics:
 
-Metrics:
+- validation mean IoU: `0.4618`
+- validation balanced mean IoU: `0.1919`
+- validation defect-balanced mean IoU: `0.1221`
+- test mean IoU: `0.4003`
+- test balanced mean IoU: `0.1823`
 
-- validation mean IoU: `0.5484`
-- validation balanced per-class mean IoU: `0.1758`
-- test mean IoU: `0.4164`
-- test balanced per-class mean IoU: `0.1559`
-- full local evaluator (`scripts/evaluate_submission.py`) mean IoU: `0.3959`
-- inference time: `~39 ms / image` on local run
+Full local evaluator:
 
-Detailed values are stored in:
+- mean IoU: `0.4200`
+- mean runtime: `260.2 ms / image`
+
+Selected per-class local evaluator means:
+
+- `good`: `0.9783`
+- `bent_wire`: `0.1724`
+- `cable_swap`: `0.0700`
+- `combined`: `0.1376`
+- `cut_inner_insulation`: `0.1065`
+- `missing_cable`: `0.1008`
+- `missing_wire`: `0.0320`
+- `poke_insulation`: `0.1666`
+
+### Handcrafted Union Ensemble
+
+Kept for comparison:
+
+- full local evaluator mean IoU: `0.3990`
+- mean runtime: `91.8 ms / image`
+
+## Submission Bundle
+
+Current exported ZIP:
+
+- `artifacts/paper_anomaly_baseline_submission.zip`
+
+Contents for the best backend:
+
+- `model.py`
+- `requirements.txt`
+- `model_artifact_padim.pt`
+- `padim_runtime.py`
+
+## Tradeoffs
+
+`padim_resnet18_diag`
+
+- clear local accuracy gain over handcrafted baseline
+- much better preservation of `good`
+- better coverage on `cable_swap`, `missing_cable`, and `cut_inner_insulation`
+- materially slower on CPU
+- `missing_wire` is still weak
+
+Handcrafted ensemble
+
+- faster and simpler
+- lighter artifact
+- substantially worse on several structural anomaly classes
+
+## Artifacts
+
+Best deep backend artifacts:
+
+- `artifacts/padim/model_artifact_padim.pt`
+- `artifacts/padim/training_summary.json`
+- `artifacts/padim/threshold_search.json`
+- `artifacts/padim/val_predictions.json`
+- `artifacts/padim/test_predictions.json`
+
+Summary metrics:
 
 - `metrics.json`
-- `artifacts/model/training_summary.json`
-- `artifacts/model/test_eval.json`
-
-## Limitations
-
-- compact, hand-crafted feature space (not deep backbone features)
-- global threshold may underfit class-specific anomaly scales
-- no domain adaptation/registration beyond resize and per-image normalization
-- designed as a robust, explainable baseline, not necessarily leaderboard-optimal

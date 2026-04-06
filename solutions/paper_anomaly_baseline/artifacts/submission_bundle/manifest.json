@@ -1,8 +1,0 @@
-{
-  "files": [
-    "model.py",
-    "requirements.txt",
-    "model_artifact.npz"
-  ],
-  "description": "Paper-aligned one-class anomaly baseline submission bundle."
-}

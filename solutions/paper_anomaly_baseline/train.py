@@ -12,9 +12,11 @@ import numpy as np
 from PIL import Image
 
 from anomaly_baseline import (
-    DEFAULT_FEATURE_SIZE,
+    BranchArtifact,
+    DEFAULT_ENSEMBLE_FEATURE_SIZES,
     FEATURE_EPS,
     ModelArtifact,
+    apply_final_dilation,
     build_binary_mask,
     compute_anomaly_map,
     extract_features,
@@ -23,6 +25,7 @@ from anomaly_baseline import (
     load_rgb,
     load_split_manifest,
     mean_iou,
+    predict_branch_mask_from_score_map,
     predict_with_artifact,
     save_model_artifact,
 )
@@ -38,6 +41,7 @@ class ScoredSample:
     class_name: str
     image_name: str
     target_small: np.ndarray
+    target_full: np.ndarray
     score_map: np.ndarray
 
 
@@ -45,7 +49,14 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train improved paper-aligned one-class anomaly baseline.")
     parser.add_argument("--split-path", type=Path, default=DEFAULT_SPLIT_PATH)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
-    parser.add_argument("--feature-size", type=int, default=DEFAULT_FEATURE_SIZE)
+    parser.add_argument("--feature-size", type=int, default=None, help="Optional single-branch override.")
+    parser.add_argument(
+        "--feature-sizes",
+        type=str,
+        default=",".join(str(value) for value in DEFAULT_ENSEMBLE_FEATURE_SIZES),
+        help="Comma-separated feature sizes for multi-scale ensemble branches.",
+    )
+    parser.add_argument("--ensemble-mode", type=str, default="union", choices=["union"])
     parser.add_argument("--eps", type=float, default=FEATURE_EPS)
     parser.add_argument("--threshold-quantile-low", type=float, default=0.80)
     parser.add_argument("--threshold-quantile-high", type=float, default=0.999)
@@ -54,11 +65,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-area-candidates", type=str, default="0,16,32,64,128,256")
     parser.add_argument("--open-kernel-candidates", type=str, default="1,3,5")
     parser.add_argument("--close-kernel-candidates", type=str, default="1,3,5")
+    parser.add_argument("--threshold-scale-candidates", type=str, default="0.75,0.8,0.85,0.9,0.95,1.0")
+    parser.add_argument("--final-dilate-candidates", type=str, default="1,3,5,7")
     return parser.parse_args()
 
 
 def parse_int_list(value: str) -> list[int]:
     return [int(token.strip()) for token in value.split(",") if token.strip()]
+
+
+def parse_float_list(value: str) -> list[float]:
+    return [float(token.strip()) for token in value.split(",") if token.strip()]
+
+
+def parse_feature_sizes(value: str) -> list[int]:
+    seen: set[int] = set()
+    ordered: list[int] = []
+    for feature_size in parse_int_list(value):
+        if feature_size not in seen:
+            ordered.append(feature_size)
+            seen.add(feature_size)
+    return ordered
 
 
 def fit_one_class_model(train_samples: list[Any], feature_size: int, eps: float) -> tuple[np.ndarray, np.ndarray]:
@@ -119,6 +146,7 @@ def score_samples(
                 class_name=sample.class_name,
                 image_name=sample.image_path.name,
                 target_small=target_small,
+                target_full=target_full,
                 score_map=score_map,
             )
         )
@@ -307,6 +335,93 @@ def calibrate_threshold(
     }
 
 
+def calibrate_ensemble_postprocess(
+    branch_score_sets: list[list[ScoredSample]],
+    branches: list[BranchArtifact],
+    threshold_scale_candidates: list[float],
+    final_dilate_candidates: list[int],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    if not branch_score_sets:
+        raise RuntimeError("No branch score sets available for ensemble calibration.")
+    if len(branch_score_sets) != len(branches):
+        raise ValueError("Each branch must have a matching scored-sample list.")
+
+    num_samples = len(branch_score_sets[0])
+    if num_samples == 0:
+        raise RuntimeError("Validation split is empty for ensemble calibration.")
+
+    for scored_samples in branch_score_sets[1:]:
+        if len(scored_samples) != num_samples:
+            raise ValueError("Branch score cache length mismatch.")
+
+    rows: list[dict[str, Any]] = []
+    for threshold_scale in threshold_scale_candidates:
+        threshold_scales = [float(threshold_scale)] * len(branches)
+        scaled_branches = [
+            BranchArtifact(
+                feature_size=branch.feature_size,
+                threshold=branch.threshold,
+                threshold_scale=float(threshold_scale),
+                min_area=branch.min_area,
+                open_kernel=branch.open_kernel,
+                close_kernel=branch.close_kernel,
+                mean=branch.mean,
+                var=branch.var,
+            )
+            for branch, threshold_scale in zip(branches, threshold_scales)
+        ]
+        for final_dilate_kernel in final_dilate_candidates:
+            iou_rows: list[dict[str, Any]] = []
+            for sample_index in range(num_samples):
+                base_sample = branch_score_sets[0][sample_index]
+                merged = np.zeros_like(base_sample.target_full, dtype=np.uint8)
+                for scaled_branch, scored_samples in zip(scaled_branches, branch_score_sets):
+                    sample = scored_samples[sample_index]
+                    if sample.image_name != base_sample.image_name or sample.class_name != base_sample.class_name:
+                        raise ValueError("Branch score caches are misaligned.")
+                    merged = np.maximum(
+                        merged,
+                        predict_branch_mask_from_score_map(
+                            score_map=sample.score_map,
+                            output_shape=sample.target_full.shape,
+                            branch=scaled_branch,
+                        ),
+                    )
+                prediction = apply_final_dilation(merged, final_dilate_kernel)
+                iou_rows.append(
+                    {
+                        "class_name": base_sample.class_name,
+                        "image_name": base_sample.image_name,
+                        "iou": float(mean_iou(prediction, base_sample.target_full)),
+                        "elapsed_ms": 0.0,
+                    }
+                )
+
+            summary = summarize_scores(iou_rows)
+            rows.append(
+                {
+                    "threshold_scales": [float(value) for value in threshold_scales],
+                    "final_dilate_kernel": int(final_dilate_kernel),
+                    "val_mean_iou": float(summary["mean_iou"]),
+                    "val_balanced_mean_iou": float(summary["balanced_mean_iou"]),
+                    "val_defect_balanced_mean_iou": float(summary["defect_balanced_mean_iou"]),
+                    "val_per_class_iou": summary["per_class_iou"],
+                }
+            )
+
+    rows_sorted = sorted(
+        rows,
+        key=lambda row: (
+            row["val_balanced_mean_iou"],
+            row["val_defect_balanced_mean_iou"],
+            row["val_mean_iou"],
+            -row["final_dilate_kernel"],
+        ),
+        reverse=True,
+    )
+    return rows_sorted[0], {"top": rows_sorted[:120]}
+
+
 def summarize_scores(iou_rows: list[dict[str, Any]]) -> dict[str, Any]:
     per_class: dict[str, list[float]] = defaultdict(list)
     for row in iou_rows:
@@ -314,10 +429,13 @@ def summarize_scores(iou_rows: list[dict[str, Any]]) -> dict[str, Any]:
 
     mean_iou_score = float(np.mean([row["iou"] for row in iou_rows])) if iou_rows else 0.0
     balanced_iou = float(np.mean([np.mean(values) for values in per_class.values()])) if per_class else 0.0
+    defect_class_values = [np.mean(values) for class_name, values in per_class.items() if class_name != "good"]
+    defect_balanced_iou = float(np.mean(defect_class_values)) if defect_class_values else 0.0
     return {
         "num_samples": len(iou_rows),
         "mean_iou": mean_iou_score,
         "balanced_mean_iou": balanced_iou,
+        "defect_balanced_mean_iou": defect_balanced_iou,
         "per_class_iou": {
             class_name: float(np.mean(values))
             for class_name, values in sorted(per_class.items())
@@ -371,61 +489,141 @@ def main() -> None:
     min_area_candidates = parse_int_list(args.min_area_candidates)
     open_kernel_candidates = parse_int_list(args.open_kernel_candidates)
     close_kernel_candidates = parse_int_list(args.close_kernel_candidates)
+    threshold_scale_candidates = parse_float_list(args.threshold_scale_candidates)
+    final_dilate_candidates = parse_int_list(args.final_dilate_candidates)
 
     if not min_area_candidates:
         raise ValueError("No min-area candidates provided.")
     if not open_kernel_candidates or not close_kernel_candidates:
         raise ValueError("Open/close kernel candidate lists must be non-empty.")
+    if not threshold_scale_candidates:
+        raise ValueError("threshold-scale candidate list must be non-empty.")
+    if not final_dilate_candidates:
+        raise ValueError("final-dilate candidate list must be non-empty.")
     if any(value < 0 for value in min_area_candidates):
         raise ValueError("min-area candidates must be non-negative.")
     if any(value < 1 for value in open_kernel_candidates + close_kernel_candidates):
         raise ValueError("kernel candidates must be positive integers.")
+    if any(value <= 0.0 for value in threshold_scale_candidates):
+        raise ValueError("threshold-scale candidates must be positive.")
+    if any(value < 1 for value in final_dilate_candidates):
+        raise ValueError("final-dilate candidates must be positive integers.")
+    if args.feature_size is not None:
+        feature_sizes = [int(args.feature_size)]
+    else:
+        feature_sizes = parse_feature_sizes(args.feature_sizes)
+    if not feature_sizes:
+        raise ValueError("At least one feature size must be provided.")
+    if any(feature_size < 8 for feature_size in feature_sizes):
+        raise ValueError("feature sizes must be >= 8.")
 
-    print("Fitting one-class Gaussian model on train/good only...")
-    mean, var = fit_one_class_model(
-        train_samples=train_samples,
-        feature_size=args.feature_size,
-        eps=args.eps,
+    branches: list[BranchArtifact] = []
+    branch_val_scores: list[list[ScoredSample]] = []
+    branch_summaries: list[dict[str, Any]] = []
+    threshold_rankings: dict[str, Any] = {}
+    print(f"Training {len(feature_sizes)} branch(es): {feature_sizes}")
+    for branch_index, feature_size in enumerate(feature_sizes, start=1):
+        print(f"\n=== Branch {branch_index}/{len(feature_sizes)}: feature_size={feature_size} ===")
+        print("Fitting one-class Gaussian model on train/good only...")
+        mean, var = fit_one_class_model(
+            train_samples=train_samples,
+            feature_size=feature_size,
+            eps=args.eps,
+        )
+
+        print("Scoring validation split for threshold calibration...")
+        val_scored = score_samples(
+            samples=val_samples,
+            mean=mean,
+            var=var,
+            eps=args.eps,
+            feature_size=feature_size,
+        )
+
+        best_config, ranking = calibrate_threshold(
+            val_samples=val_scored,
+            quantile_low=args.threshold_quantile_low,
+            quantile_high=args.threshold_quantile_high,
+            threshold_steps=args.threshold_steps,
+            stage1_top_k=args.stage1_top_k,
+            min_area_candidates=min_area_candidates,
+            open_kernel_candidates=open_kernel_candidates,
+            close_kernel_candidates=close_kernel_candidates,
+        )
+
+        print(
+            "Selected validation config:",
+            f"threshold={best_config['threshold']:.6f}",
+            f"open_kernel={best_config['open_kernel']}",
+            f"close_kernel={best_config['close_kernel']}",
+            f"min_area={best_config['min_area']}",
+            f"val_balanced_mIoU_small={best_config['val_balanced_mean_iou_small']:.4f}",
+        )
+
+        branches.append(
+            BranchArtifact(
+                feature_size=feature_size,
+                threshold=float(best_config["threshold"]),
+                threshold_scale=1.0,
+                min_area=int(best_config["min_area"]),
+                open_kernel=int(best_config["open_kernel"]),
+                close_kernel=int(best_config["close_kernel"]),
+                mean=mean,
+                var=var,
+            )
+        )
+        branch_val_scores.append(val_scored)
+        branch_summaries.append(
+            {
+                "feature_size": feature_size,
+                "threshold": float(best_config["threshold"]),
+                "threshold_scale": 1.0,
+                "open_kernel": int(best_config["open_kernel"]),
+                "close_kernel": int(best_config["close_kernel"]),
+                "min_area": int(best_config["min_area"]),
+                "selection_objective": "balanced mean IoU on validation (small-map calibration)",
+                "validation_small_proxy_score": float(best_config["val_balanced_mean_iou_small"]),
+            }
+        )
+        threshold_rankings[f"feature_size_{feature_size}"] = ranking
+
+    print("\nCalibrating ensemble-level threshold scales and final dilation on full-resolution val split...")
+    ensemble_best_config, ensemble_ranking = calibrate_ensemble_postprocess(
+        branch_score_sets=branch_val_scores,
+        branches=branches,
+        threshold_scale_candidates=threshold_scale_candidates,
+        final_dilate_candidates=final_dilate_candidates,
     )
-
-    print("Scoring validation split for threshold calibration...")
-    val_scored = score_samples(
-        samples=val_samples,
-        mean=mean,
-        var=var,
-        eps=args.eps,
-        feature_size=args.feature_size,
-    )
-
-    best_config, ranking = calibrate_threshold(
-        val_samples=val_scored,
-        quantile_low=args.threshold_quantile_low,
-        quantile_high=args.threshold_quantile_high,
-        threshold_steps=args.threshold_steps,
-        stage1_top_k=args.stage1_top_k,
-        min_area_candidates=min_area_candidates,
-        open_kernel_candidates=open_kernel_candidates,
-        close_kernel_candidates=close_kernel_candidates,
-    )
-
     print(
-        "Selected validation config:",
-        f"threshold={best_config['threshold']:.6f}",
-        f"open_kernel={best_config['open_kernel']}",
-        f"close_kernel={best_config['close_kernel']}",
-        f"min_area={best_config['min_area']}",
-        f"val_balanced_mIoU_small={best_config['val_balanced_mean_iou_small']:.4f}",
+        "Selected ensemble config:",
+        f"threshold_scales={ensemble_best_config['threshold_scales']}",
+        f"final_dilate_kernel={ensemble_best_config['final_dilate_kernel']}",
+        f"val_balanced_mIoU_full={ensemble_best_config['val_balanced_mean_iou']:.4f}",
+        f"val_defect_balanced_mIoU_full={ensemble_best_config['val_defect_balanced_mean_iou']:.4f}",
     )
+
+    calibrated_branches = [
+        BranchArtifact(
+            feature_size=branch.feature_size,
+            threshold=branch.threshold,
+            threshold_scale=float(threshold_scale),
+            min_area=branch.min_area,
+            open_kernel=branch.open_kernel,
+            close_kernel=branch.close_kernel,
+            mean=branch.mean,
+            var=branch.var,
+        )
+        for branch, threshold_scale in zip(branches, ensemble_best_config["threshold_scales"])
+    ]
+    branches = calibrated_branches
+    for summary_row, threshold_scale in zip(branch_summaries, ensemble_best_config["threshold_scales"]):
+        summary_row["threshold_scale"] = float(threshold_scale)
 
     artifact = ModelArtifact(
-        feature_size=args.feature_size,
         eps=args.eps,
-        threshold=float(best_config["threshold"]),
-        min_area=int(best_config["min_area"]),
-        open_kernel=int(best_config["open_kernel"]),
-        close_kernel=int(best_config["close_kernel"]),
-        mean=mean,
-        var=var,
+        branches=tuple(branches),
+        ensemble_mode=args.ensemble_mode,
+        final_dilate_kernel=int(ensemble_best_config["final_dilate_kernel"]),
     )
 
     model_path = output_dir / "model_artifact.npz"
@@ -441,8 +639,11 @@ def main() -> None:
         "split_manifest": str(split_path),
         "model_artifact": str(model_path),
         "training_setup": {
-            "feature_size": int(args.feature_size),
+            "feature_sizes": [int(value) for value in feature_sizes],
+            "ensemble_mode": args.ensemble_mode,
             "eps": float(args.eps),
+            "threshold_scale_candidates": [float(value) for value in threshold_scale_candidates],
+            "final_dilate_candidates": [int(value) for value in final_dilate_candidates],
             "anomaly_model_fitting_data": {
                 "split": "train",
                 "class_filter": "good",
@@ -454,20 +655,22 @@ def main() -> None:
                 "num_samples": len(val_samples),
             },
         },
-        "selected_thresholding": {
-            "threshold": float(best_config["threshold"]),
-            "open_kernel": int(best_config["open_kernel"]),
-            "close_kernel": int(best_config["close_kernel"]),
-            "min_area": int(best_config["min_area"]),
-            "selection_objective": "balanced mean IoU on validation (small-map calibration)",
-            "validation_small_proxy_score": float(best_config["val_balanced_mean_iou_small"]),
+        "selected_branch_configs": branch_summaries,
+        "ensemble_calibration": {
+            "selection_objective": "balanced mean IoU on full-resolution validation after branch union",
+            "threshold_scales": ensemble_best_config["threshold_scales"],
+            "final_dilate_kernel": int(ensemble_best_config["final_dilate_kernel"]),
+            "validation_full_balanced_mean_iou": float(ensemble_best_config["val_balanced_mean_iou"]),
+            "validation_full_defect_balanced_mean_iou": float(ensemble_best_config["val_defect_balanced_mean_iou"]),
+            "validation_full_mean_iou": float(ensemble_best_config["val_mean_iou"]),
         },
         "val_metrics": val_metrics,
         "test_metrics": test_metrics,
     }
 
     (output_dir / "training_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    (output_dir / "threshold_search.json").write_text(json.dumps(ranking, indent=2), encoding="utf-8")
+    threshold_rankings["ensemble_postprocess"] = ensemble_ranking
+    (output_dir / "threshold_search.json").write_text(json.dumps(threshold_rankings, indent=2), encoding="utf-8")
     (output_dir / "val_predictions.json").write_text(json.dumps(val_rows, indent=2), encoding="utf-8")
     (output_dir / "test_predictions.json").write_text(json.dumps(test_rows, indent=2), encoding="utf-8")
 
