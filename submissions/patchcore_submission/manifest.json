@@ -1,0 +1,9 @@
+{
+  "files": [
+    "model.py",
+    "requirements.txt",
+    "coreset.npy",
+    "projection_components.npy",
+    "threshold.npy"
+  ]
+}
